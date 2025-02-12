@@ -12,7 +12,7 @@
 
 /* === PROTOTYPES === */
 
-static int roundup(int lower_bound);
+static int next_power_of_2(int lower_bound);
 
 /* === PUBLIC FUNCTIONS === */
 
@@ -67,13 +67,35 @@ bool text_buf_init_file(TextBuf *buf, const char *filename) {
     return true;
 }
 
+void text_buf_save(TextBuf *buf, const char *path) {
+    FILE *f = fopen(path, "wb");
+
+    for (int i = 0; i < buf->len_lines; i++) {
+        fprintf(f, "%.*s\n", (int) buf->line_lens[i], buf->lines[i]);
+    }
+
+    fclose(f);
+}
+
 void text_buf_deinit(TextBuf *buf) {
     IGNORE(buf);
 }
 
+void text_buf_check_line_cap(TextBuf *buf, int line, int needed_cap) {
+    if (buf->line_caps[line] < needed_cap) {
+        int new_cap = next_power_of_2(needed_cap);
+        char *new_line = calloc(new_cap, sizeof(char *));
+        memcpy(new_line, buf->lines[line], 
+                sizeof(char) * buf->line_lens[line]);
+        free(buf->lines[line]);
+        buf->lines[line] = new_line;
+        buf->line_caps[line] = new_cap;
+    }
+}
+
 void text_buf_check_line(TextBuf *buf, int line) {
     if (line >= buf->len_lines) {
-        int new_cap_lines = roundup(buf->len_lines);
+        int new_cap_lines = next_power_of_2(buf->len_lines);
 
         char **new_lines = calloc(new_cap_lines, sizeof(char *)); 
         int *new_line_caps = calloc(new_cap_lines, sizeof(int)); 
@@ -111,7 +133,7 @@ void text_buf_set_line(TextBuf *buf, int line, const char *text, int text_len) {
     }
 
     if (text_len >= buf->line_caps[line]) {
-        buf->line_caps[line] = roundup(text_len);
+        buf->line_caps[line] = next_power_of_2(text_len);
         buf->lines[line] = realloc(buf->lines[line], buf->line_caps[line]);
     }
 
@@ -123,6 +145,59 @@ void text_buf_append_line(TextBuf *buf, const char *text, int text_len) {
     text_buf_set_line(buf, buf->len_lines, text, text_len);
 }
 
+void text_buf_insert_str(TextBuf *buf, int row, int col, const char *str, 
+        int str_len) {
+    text_buf_check_line_cap(buf, row, buf->line_lens[row] + str_len);
+
+    for (int i = buf->line_lens[row] - 1; i >= col; i--) {
+        buf->lines[row][i + str_len] = buf->lines[row][i];
+    }
+
+    for (int i = 0; i < str_len; i++) {
+        buf->lines[row][col + i] = str[i];
+    }
+    buf->line_lens[row] += str_len;
+}
+
+void text_buf_insert(TextBuf *buf, int row, int col, int c) {
+    char c_char = (char) c;
+    text_buf_insert_str(buf, row, col, &c_char, 1);
+}
+
+void text_buf_delete(TextBuf *buf, int row, int col) {
+    for (int i = col - 1; i < buf->line_lens[row] - 1; i++) {
+        buf->lines[row][i] = buf->lines[row][i + 1];
+    }
+
+    buf->line_lens[row]--;
+}
+
+void text_buf_create_line(TextBuf *buf, int row) {
+    text_buf_check_line(buf, buf->len_lines + 1);
+
+    for (int i = buf->len_lines - 1; i > row + 1; i--) {
+        buf->lines[i] = buf->lines[i - 1];
+        buf->line_lens[i] = buf->line_lens[i - 1];
+        buf->line_caps[i] = buf->line_caps[i - 1];
+    }
+
+    buf->lines[row + 1] = calloc(INIT_LINE_CAP, sizeof(char));
+    buf->line_lens[row + 1] = 0;
+    buf->line_caps[row + 1] = INIT_LINE_CAP;
+
+    buf->len_lines++;
+}
+
+void text_buf_delete_line(TextBuf *buf, int row) {
+    for (int i = row; i < buf->len_lines - 1; i++) {
+        buf->lines[i] = buf->lines[i + 1];
+        buf->line_lens[i] = buf->line_lens[i + 1];
+        buf->line_caps[i] = buf->line_caps[i + 1];
+    }
+
+    buf->len_lines--;
+}
+
 void text_buf_print(TextBuf *buf) {
     for (int i = 0; i < buf->len_lines; i++) {
         printf("%.*s\n", buf->line_lens[i], buf->lines[i]);
@@ -131,7 +206,7 @@ void text_buf_print(TextBuf *buf) {
 
 /* === PRIVATE FUNCTIONS === */
 
-static int roundup(int lower_bound) {
+static int next_power_of_2(int lower_bound) {
     int num  = 2;
     while (num <= lower_bound) {
         num *= 2;

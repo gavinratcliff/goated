@@ -11,16 +11,22 @@
 
 #define MAX_CMD_KEYS 128
 
+#define VISUAL_ROW(_ed, _row) ((_row) - ((_ed)->cur_buf.scroll))
+
 typedef enum {
     MODE_NORMAL,
+    MODE_INSERT,
+    MODE_META,
 
     _MODE_MAX,
 } EditorMode;
 
 typedef struct {
     TextBuf text;
-    int cursor_row, cursor_col;
+
     const char *filename;
+
+    int cursor_row, cursor_col;
     int scroll;
 
     int last_column;
@@ -40,6 +46,7 @@ struct Editor {
     EditorBuf cur_buf;
 
     EditorMode mode;
+    bool insert_right;
 
     int max_screen_lines;
 

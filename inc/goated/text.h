@@ -15,9 +15,19 @@ typedef struct {
 void text_buf_init_empty(TextBuf *buf);
 bool text_buf_init_file(TextBuf *buf, const char *filename);
 
+void text_buf_save(TextBuf *buf, const char *path);
+
 void text_buf_check_line(TextBuf *buf, int line);
 void text_buf_set_line(TextBuf *buf, int line, const char *text, int text_len);
 void text_buf_append_line(TextBuf *buf, const char *text, int text_len);
+
+void text_buf_insert_str(TextBuf *buf, int row, int col, const char *str, 
+        int str_len);
+void text_buf_insert(TextBuf *buf, int row, int col, int c);
+void text_buf_delete(TextBuf *buf, int row, int col);
+
+void text_buf_delete_line(TextBuf *buf, int row);
+void text_buf_create_line(TextBuf *buf, int row);
 
 void text_buf_print(TextBuf *buf);
 
